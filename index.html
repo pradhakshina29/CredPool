@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrustPool MVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8fafc;
+        color: #0f172a;
+      }
+      /* Global override to prevent white-on-white text in inputs */
+      input, select, textarea {
+        color: #020617 !important;
+      }
+      input::placeholder {
+        color: #94a3b8 !important;
+      }
+
+      /* Notification Animations */
+      @keyframes shrink-width {
+        from { width: 100%; }
+        to { width: 0%; }
+      }
+      .animate-shrink-width {
+        animation: shrink-width 5s linear forwards;
+      }
+      @keyframes slide-in-right {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      .animate-in.slide-in-from-right-8 {
+        animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.42.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

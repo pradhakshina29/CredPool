@@ -1,0 +1,7 @@
+{
+  "name": "TrustPool: MSME Lending MVP",
+  "description": "A pooling-based lending platform for MSMEs featuring simulated Government ID authentication, AI-driven credit scoring, and blockchain transparency.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
