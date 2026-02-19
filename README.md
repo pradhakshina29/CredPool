@@ -1,20 +1,45 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# CredPool – AI-Powered MSME Pooled Lending Platform
 
-# Run and deploy your AI Studio app
+## 🚀 Overview
+CredPool is a web platform that enables MSMEs to access loans through pooled micro‑lending.  
+Multiple MSMEs can act as lenders to collectively fund a borrower.  
+An AI engine evaluates cashflow, revenue stability, and repayment history to recommend loan amount, tenure, and risk.
 
-This contains everything you need to run your app locally.
+## 🎯 Problem Statement
+MSMEs struggle to access formal credit due to:
+- Limited credit history  
+- High risk for single lenders  
+- Lack of transparent lending mechanisms  
 
-View your app in AI Studio: https://ai.studio/apps/drive/1yGvC9WUhQag7N917xIA5dyMyDnqO9xVT
+CredPool solves this using pooled lending and AI-based credit scoring.
 
-## Run Locally
+## 💡 Features
+- 🔐 Phone OTP Authentication (Firebase Auth)
+- 👥 Borrower & Lender roles
+- 📝 Loan requests by borrowers
+- 🤝 Pooling by multiple lenders
+- 🤖 AI-based merit/credit score & loan eligibility
+- 📊 Cashflow & credit score graphs
+- 💳 Dummy payment gateway for demo
+- 🗄️ Firebase Firestore backend
 
-**Prerequisites:**  Node.js
+  ## ⚠️ Risk, Bankruptcy & False Claims Handling
+- ❌ No self-declared bankruptcy: users cannot mark themselves bankrupt.
+- ✅ Status changes only based on missed EMIs, cashflow trends, and repayment behavior.
+- 🧠 AI early-warning system flags “At Risk” accounts before default.
+- 🔁 Restructuring options for genuine distress (longer tenure / short moratorium).
+- 📉 False claims or repeated defaults reduce merit score and freeze new loans.
+- 🤝 Pooled-risk protection spreads loss across lenders.
+- 🧾 Full audit logs for disputes and transparency.
+
+## ⛓️ Blockchain (Future Improvements – Phase 2)
+Planned (not in MVP) to add trust and auditability:
+- 📜 Tamper-proof loan agreements (store loan terms hash on-chain)
+- 🤝 Transparent pooling records (verify who funded what)
+- 💸 Repayment proofs (on-chain hashes for disputes)
+- 🧳 Portable credit history (hashes for cross-platform trust)
+- 🤖 Smart contracts (auto-release funds, auto-distribute repayments)
 
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🎥 Demo Video
+https://youtu.be/Rsr51WX5uyo?si=B6Z6JDmToz2Gidpq
