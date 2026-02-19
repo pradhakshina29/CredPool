@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { BusinessProfile, FinancialSignals, LoanApplication, CreditAssessment, LenderPreferences, AllocationSuggestion } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: "AIzaSyDrTbuQiGVa4YzyZE2Dd62WTaOlewstjoE" });
 
 export const analyzeMSMEProtocol = async (
   profile: BusinessProfile,
@@ -22,7 +22,7 @@ export const analyzeMSMEProtocol = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -80,7 +80,7 @@ export const calculateLenderAllocation = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -123,7 +123,7 @@ export const calculateDynamicCreditScore = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
