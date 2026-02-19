@@ -40,25 +40,25 @@ const RoleSelection: React.FC<RoleSelectionProps> = ({ onRoleSelected, onBack })
       <div className="max-w-4xl w-full">
         {/* Top Navigation */}
         <div className="mb-12 flex items-center justify-between">
-          <button 
+          <button
             onClick={onBack}
-            className="group inline-flex items-center space-x-2 text-slate-400 hover:text-slate-900 transition-all"
+            className="group inline-flex items-center space-x-2 text-slate-400 hover:text-rose-500 transition-all active:scale-95"
           >
-            <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-sm group-hover:shadow-md transition-all">
-              <svg className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            <div className="p-2 rounded-xl bg-white border border-slate-100 shadow-sm group-hover:shadow-md group-hover:border-rose-100 transition-all">
+              <svg className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest">Sign Out</span>
+            <span className="text-[10px] font-black uppercase tracking-widest group-hover:tracking-[0.15em] transition-all">Log Out</span>
           </button>
-          
+
           <div className="text-right">
             <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Stage 02/02</p>
             <p className="text-sm font-bold text-slate-900">Configure Identity</p>
           </div>
         </div>
 
-        <div className="text-center mb-16">
+        <div className="text-center mb-16 animate-in slide-in-from-top-12 duration-1000">
           <h1 className="text-5xl font-black text-slate-900 tracking-tight mb-4">Choose your role.</h1>
-          <p className="text-lg text-slate-500 font-medium max-w-xl mx-auto">Select the protocol interface that best aligns with your financial objectives on the TrustPool network.</p>
+          <p className="text-lg text-slate-500 font-medium max-w-xl mx-auto">Select the protocol interface that best aligns with your financial objectives on the <span className="text-indigo-600 font-bold">CredPool</span> network.</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -76,18 +76,18 @@ const RoleSelection: React.FC<RoleSelectionProps> = ({ onRoleSelected, onBack })
               <div className="w-16 h-16 bg-slate-50 text-slate-900 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
                 {role.icon}
               </div>
-              
+
               <div className="mb-2 inline-block px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
                 {role.tag}
               </div>
-              
+
               <h2 className="text-2xl font-black text-slate-900 mb-4">{role.title}</h2>
               <p className="text-slate-500 mb-8 font-medium leading-relaxed">{role.description}</p>
-              
+
               <ul className="space-y-3 mb-10 w-full">
                 {role.features.map(f => (
                   <li key={f} className="flex items-center space-x-3 text-xs font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
-                    <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
+                    <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                     <span>{f}</span>
                   </li>
                 ))}
@@ -96,7 +96,7 @@ const RoleSelection: React.FC<RoleSelectionProps> = ({ onRoleSelected, onBack })
               <div className="mt-auto w-full pt-6 border-t border-slate-50 flex items-center justify-between">
                 <span className="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors">Select Interface</span>
                 <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                 </div>
               </div>
             </button>
@@ -104,7 +104,7 @@ const RoleSelection: React.FC<RoleSelectionProps> = ({ onRoleSelected, onBack })
         </div>
 
         <div className="mt-16 pt-8 border-t border-slate-200 text-center">
-          <button 
+          <button
             onClick={() => onRoleSelected(UserRole.ADMIN)}
             className="px-6 py-2 rounded-full text-slate-400 hover:text-slate-900 hover:bg-white transition-all text-[10px] font-black uppercase tracking-[0.2em]"
           >

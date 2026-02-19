@@ -7,9 +7,11 @@ import DashboardLayout from './components/Dashboard/DashboardLayout';
 import BorrowerDashboard from './components/Dashboard/BorrowerDashboard';
 import LenderDashboard from './components/Dashboard/LenderDashboard';
 import AdminDashboard from './components/Dashboard/AdminDashboard';
+import TransactionHistory from './pages/TransactionHistory';
 
 import { db } from './services/firebase';
 import { registryService } from './services/registryService';
+import { sandboxAuthService } from './services/sandboxAuthService';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Notification as TPNotification, UserRole } from './types';
 
@@ -37,11 +39,11 @@ const NotificationOverlay: React.FC<{ notifications: TPNotification[], onDismiss
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [view, setView] = useState<'AUTH' | 'ROLE_PICK' | 'APP'>('AUTH');
+  const [view, setView] = useState<'AUTH' | 'ROLE_PICK' | 'APP' | 'TRANSACTION_HISTORY'>('AUTH');
   const [notifications, setNotifications] = useState<TPNotification[]>([]);
 
   useEffect(() => {
-    (window as any).trustpool_notify = (title: string, message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' = 'INFO') => {
+    (window as any).credpool_notify = (title: string, message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' = 'INFO') => {
       const id = Math.random().toString(36).substr(2, 9);
       const newNotif: TPNotification = {
         id,
@@ -60,8 +62,8 @@ const App: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('trustpool_user');
-    const savedToken = localStorage.getItem('trustpool_token');
+    const savedUser = localStorage.getItem('credpool_user');
+    const savedToken = localStorage.getItem('credpool_token');
 
     if (savedUser && savedToken) {
       const parsedUser = JSON.parse(savedUser);
@@ -71,11 +73,16 @@ const App: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    // Seed sandbox accounts on app load for demo
+    sandboxAuthService.seedSandboxAccounts();
+  }, []);
+
   const handleLoginSuccess = async (userData: User, jwt: string) => {
     // 1. Initial local set
     setUser(userData);
     setToken(jwt);
-    localStorage.setItem('trustpool_token', jwt);
+    localStorage.setItem('credpool_token', jwt);
 
     // 2. Fetch Centralized Data from Firestore
     try {
@@ -88,13 +95,13 @@ const App: React.FC = () => {
 
       const syncedUser = { ...userData, role: finalRole };
       setUser(syncedUser);
-      localStorage.setItem('trustpool_user', JSON.stringify(syncedUser));
+      localStorage.setItem('credpool_user', JSON.stringify(syncedUser));
 
       if (finalRole === UserRole.UNASSIGNED) {
         setView('ROLE_PICK');
       } else {
         setView('APP');
-        (window as any).trustpool_notify?.("Welcome Back!", `Logged in as ${userData.name}`, "SUCCESS");
+        (window as any).credpool_notify?.("Welcome Back!", `Logged in as ${userData.name}`, "SUCCESS");
       }
     } catch (e) {
       setView('ROLE_PICK');
@@ -105,7 +112,7 @@ const App: React.FC = () => {
     if (!user) return;
     const updatedUser = { ...user, role };
     setUser(updatedUser);
-    localStorage.setItem('trustpool_user', JSON.stringify(updatedUser));
+    localStorage.setItem('credpool_user', JSON.stringify(updatedUser));
     setView('APP');
   };
 
@@ -116,8 +123,8 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('trustpool_user');
-    localStorage.removeItem('trustpool_token');
+    localStorage.removeItem('credpool_user');
+    localStorage.removeItem('credpool_token');
     setView('AUTH');
   };
 
@@ -142,9 +149,30 @@ const App: React.FC = () => {
     <>
       <NotificationOverlay notifications={notifications} onDismiss={dismissNotification} />
       <DashboardLayout user={user!} onLogout={handleLogout} onSwitchRole={handleSwitchRole}>
-        {user?.role === UserRole.BORROWER && <BorrowerDashboard user={user} />}
-        {user?.role === UserRole.LENDER && <LenderDashboard user={user} />}
-        {user?.role === UserRole.ADMIN && <AdminDashboard onBack={handleSwitchRole} />}
+        <div className="mb-6 flex space-x-4 border-b border-white/5 pb-4">
+          <button
+            onClick={() => setView('APP')}
+            className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all ${view === 'APP' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setView('TRANSACTION_HISTORY')}
+            className={`text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all ${view === 'TRANSACTION_HISTORY' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            History
+          </button>
+        </div>
+
+        {view === 'APP' && (
+          <>
+            {user?.role === UserRole.BORROWER && <BorrowerDashboard user={user} />}
+            {user?.role === UserRole.LENDER && <LenderDashboard user={user} />}
+            {user?.role === UserRole.ADMIN && <AdminDashboard onBack={handleSwitchRole} />}
+          </>
+        )}
+
+        {view === 'TRANSACTION_HISTORY' && <TransactionHistory />}
       </DashboardLayout>
     </>
   );

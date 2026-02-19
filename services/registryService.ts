@@ -72,6 +72,7 @@ export const registryService = {
       loan,
       assessment,
       totalFunded: 0,
+      totalRepaid: 0,
       status: 'OPEN',
       createdAt: Date.now(),
       commitments: []
@@ -166,23 +167,21 @@ export const registryService = {
 
     await setDoc(doc(db, "repayments", repaymentId), repayment);
 
-    // Update pool status if needed (e.g. if fully repaid)
-    // For MVP, we'll also trigger a credit score update
-    await registryService.updateBorrowerCreditScore(borrowerId);
-
-    // Check if fully repaid
+    // Update pool data and status
     const poolSnap = await getDocs(query(collection(db, "pools"), where("id", "==", poolId)));
     if (!poolSnap.empty) {
-      const pool = poolSnap.docs[0].data() as PoolEntry;
-      const repaymentsSnapshot = await getDocs(query(collection(db, "repayments"), where("poolId", "==", poolId)));
-      const totalRepaidAmount = repaymentsSnapshot.docs.reduce((acc, d) => acc + (d.data().amount || 0), 0);
+      const poolDoc = poolSnap.docs[0];
+      const pool = poolDoc.data() as PoolEntry;
+      const newTotalRepaid = (pool.totalRepaid || 0) + amount;
 
-      if (totalRepaidAmount >= pool.loan.amount) {
-        await updateDoc(doc(db, "pools", poolSnap.docs[0].id), {
-          status: 'REPAID'
-        });
-      }
+      await updateDoc(poolDoc.ref, {
+        totalRepaid: newTotalRepaid,
+        status: newTotalRepaid >= pool.loan.amount ? 'REPAID' : pool.status
+      });
     }
+
+    // Trigger credit score update
+    await registryService.updateBorrowerCreditScore(borrowerId);
   },
 
   /**
@@ -238,6 +237,17 @@ export const registryService = {
       borrower: borrowerSnap.empty ? null : borrowerSnap.docs[0].data() as PersistedBorrowerData,
       lender: lenderSnap.empty ? null : lenderSnap.docs[0].data() as PersistedLenderData
     };
+  },
+
+  /**
+   * DATABASE LISTEN: Get real-time lender data
+   */
+  listenToLenderData: (udyamId: string, callback: (data: PersistedLenderData) => void) => {
+    return onSnapshot(doc(db, "lenders", udyamId), (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data() as PersistedLenderData);
+      }
+    });
   },
 
   /**

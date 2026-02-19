@@ -16,12 +16,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(0);
   const [error, setError] = useState('');
-  
+
   // Security references
   const [activeOtpHash, setActiveOtpHash] = useState<string | null>(null);
   const [simulatedSms, setSimulatedSms] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
-  
+
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -109,14 +109,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#f1f5f9] px-4 py-12 font-sans relative">
-      
+
       {/* SIMULATED SMS BANNER */}
       {simulatedSms && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-md z-[100] px-4 animate-in slide-in-from-top-4">
           <div className="bg-slate-950 text-white p-5 rounded-3xl shadow-2xl border border-indigo-500/30 flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="bg-indigo-600 p-2.5 rounded-xl">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Simulated SMS</p>
@@ -128,11 +128,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       )}
 
       <div className="max-w-md w-full">
-        <div className="mb-10 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-600 rounded-[2rem] shadow-2xl mb-6 transform -rotate-6 border-4 border-white">
-            <span className="text-white text-4xl font-black italic">T</span>
+        <div className="mb-10 text-center animate-in fade-in zoom-in duration-700">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-600 rounded-[2.5rem] shadow-2xl mb-6 transform -rotate-6 border-4 border-white hover:rotate-0 hover:scale-110 transition-all duration-500 cursor-pointer group">
+            <span className="text-white text-4xl font-black italic group-hover:not-italic group-hover:text-amber-300 transition-all">C</span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">TrustPool</h1>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight hover:text-indigo-600 transition-colors duration-300 cursor-default">CredPool</h1>
           <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] opacity-80 mt-2">Protocol Gatekeeper</p>
         </div>
 
@@ -172,14 +172,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-slate-900 hover:bg-indigo-600 text-white font-black py-5 rounded-2xl transition-all shadow-xl disabled:opacity-50 uppercase text-xs tracking-widest"
+                  className="w-full bg-slate-900 hover:bg-indigo-600 text-white font-black py-5 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-indigo-500/20 active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest"
                 >
                   {loading ? 'Verifying Node...' : 'Request Access'}
                 </button>
 
                 <div className="pt-6 border-t border-slate-50 grid grid-cols-3 gap-2">
                   {MOCK_MSME_DATA.map((d, i) => (
-                    <button key={i} type="button" onClick={() => {setUdyamId(d.udyam); setPhone(d.phone)}} className="text-[9px] font-black text-slate-400 border border-slate-100 py-2 rounded-lg hover:bg-slate-50">Profile {i+1}</button>
+                    <button key={i} type="button" onClick={() => { setUdyamId(d.udyam); setPhone(d.phone) }} className="text-[9px] font-black text-slate-400 border border-slate-100 py-2 rounded-lg hover:bg-slate-50">Profile {i + 1}</button>
                   ))}
                 </div>
               </form>
@@ -207,9 +207,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   {loading ? 'Authorizing Token...' : 'Finalize Login'}
                 </button>
                 <div className="text-center">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                     Expires in {Math.floor(timer/60)}:{(timer%60).toString().padStart(2,'0')}
-                   </p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Expires in {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+                  </p>
                 </div>
               </form>
             )}

@@ -10,6 +10,7 @@ export interface User {
   id: string;
   udyamId: string;
   phoneNumber: string;
+  email?: string;
   name: string;
   role: UserRole;
   walletAddress?: string;
@@ -80,7 +81,8 @@ export interface PoolEntry {
   loan: LoanApplication;
   assessment: CreditAssessment;
   totalFunded: number;
-  status: 'OPEN' | 'FUNDED' | 'ACTIVE' | 'CLOSED';
+  totalRepaid: number;
+  status: 'OPEN' | 'FUNDED' | 'ACTIVE' | 'REPAID' | 'CLOSED';
   createdAt: number;
   commitments: PoolCommitment[]; // track individual lender contributions
 }
@@ -125,4 +127,27 @@ export interface AllocationSuggestion {
   maxLendingCapacity: number; // New capacity based on revenue
   confidenceScore: number;
   allocationReason: string;
+}
+
+export interface Transaction {
+  id?: string;
+  userId: string;
+  userEmail: string;
+  amount: number;
+  loanId: string;
+  orderId: string;
+  paymentStatus: 'PENDING' | 'SUCCESS' | 'FAILED';
+  timestamp: any; // Using any for serverTimestamp
+  paymentMethod: "PayPal";
+}
+
+export interface SandboxAccount {
+  id?: string;
+  email: string;
+  password: string;
+  userId: string;
+  name: string;
+  status: "ACTIVE" | "BLOCKED";
+  balance: number;
+  createdAt: any;
 }

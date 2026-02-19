@@ -5,6 +5,7 @@ import { calculateLenderAllocation } from '../../services/geminiService';
 import { registryService } from '../../services/registryService';
 import { db } from '../../services/firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import PaymentCard from '../Payment/PaymentCard';
 
 interface LenderDashboardProps {
   user: User;
@@ -16,6 +17,8 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
   const [walletAddress, setWalletAddress] = useState('');
   const [availablePools, setAvailablePools] = useState<PoolEntry[]>([]);
   const [myPledges, setMyPledges] = useState<{ poolId: string, amount: number, timestamp: number }[]>([]);
+  const [repaymentHistory, setRepaymentHistory] = useState<Repayment[]>([]);
+  const [totalReturned, setTotalReturned] = useState(0);
 
   const [analyzingPool, setAnalyzingPool] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<AllocationSuggestion | null>(null);
@@ -31,6 +34,8 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
     preferredIndustries: ['Manufacturing', 'Retail']
   });
 
+  const [activePayment, setActivePayment] = useState<{ amount: number, pool: PoolEntry, duration: number } | null>(null);
+
   useEffect(() => {
     // Real-time Firestore Listener
     const unsubscribe = registryService.listenToPools((pools) => {
@@ -38,41 +43,44 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
       setAvailablePools(pools);
     });
 
-    // Load Wallet Info & Preferences from Firestore
-    const loadProfile = async () => {
-      const profileData = await registryService.getUserProfile(user.udyamId);
-      if (profileData.lender) {
-        const data = profileData.lender;
-        setPreferences(data.preferences || preferences);
-        setMyPledges(data.myPledges || []);
-        if (data.walletAddress) {
-          setWalletAddress(data.walletAddress);
-          setIsWalletConnected(true);
-        }
-        setView('MARKETPLACE');
+    // Real-time Lender Profile Update (Wait for udyamId)
+    const unsubscribeLender = registryService.listenToLenderData(user.udyamId, (data) => {
+      setPreferences(data.preferences || preferences);
+      setMyPledges(data.myPledges || []);
+      if (data.walletAddress) {
+        setWalletAddress(data.walletAddress);
+        setIsWalletConnected(true);
       }
-    };
-    loadProfile();
+      if (data.preferences) setView('MARKETPLACE');
+    });
 
-    // Listen for repayments to notify lender
+    // Listen for repayments to notify lender (Filtered)
     const sessionStartTime = Date.now();
     const unsubscribeRepayments = onSnapshot(query(collection(db, "repayments"), orderBy("paidAt", "desc")), (snapshot) => {
+      const allRepays = snapshot.docs.map(doc => doc.data() as Repayment);
+
+      // Calculate total returned for THIS lender
+      const myPoolIds = myPledges.map(p => p.poolId);
+      const myReturns = allRepays.filter(r => myPoolIds.includes(r.poolId));
+      setRepaymentHistory(myReturns);
+      setTotalReturned(myReturns.reduce((acc, r) => acc + (r.amount || 0), 0));
+
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added") {
           const data = change.doc.data() as Repayment;
-          // Only notify for NEW payments during this session
-          if (data.paidAt > sessionStartTime) {
-            // We use a ref-like check or just rely on sessionStartTime to prevent ghosting
-            (window as any).trustpool_notify?.("Payment Received!", `Borrower repaid ₹${(data.amount / 1000).toFixed(0)}K in Pool ${data.poolId}`, "SUCCESS");
+          if (data.paidAt > sessionStartTime && myPoolIds.includes(data.poolId)) {
+            (window as any).credpool_notify?.("Payment Received!", `Borrower repaid ₹${(data.amount / 1000).toFixed(0)}K in Pool ${data.poolId}`, "SUCCESS");
           }
         }
       });
     });
 
     return () => {
+      unsubscribe();
+      unsubscribeLender();
       unsubscribeRepayments();
     };
-  }, [user.udyamId]); // Removed myPledges dependency to stop re-listening constantly
+  }, [user.udyamId, myPledges.length]); // Re-run if pledge count changes to update filter
 
   const connectWallet = async () => {
     if ((window as any).ethereum) {
@@ -80,8 +88,8 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
         const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
         setWalletAddress(accounts[0]);
         setIsWalletConnected(true);
-      } catch (e) { (window as any).trustpool_notify?.("Metamask Error", "Sign-In Rejected", "WARNING"); }
-    } else { (window as any).trustpool_notify?.("Browser Error", "MetaMask extension not found", "WARNING"); }
+      } catch (e) { (window as any).credpool_notify?.("Metamask Error", "Sign-In Rejected", "WARNING"); }
+    } else { (window as any).credpool_notify?.("Browser Error", "MetaMask extension not found", "WARNING"); }
   };
 
   const handleSavePreferences = async () => {
@@ -102,7 +110,7 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
 
     setAnalyzingPool(null);
     setSuggestion(null);
-    (window as any).trustpool_notify?.("Pledge Success!", `Committed ₹${(amount / 1000).toFixed(0)}K to ${pool.borrowerName}`, "SUCCESS");
+    (window as any).credpool_notify?.("Pledge Success!", `Committed ₹${(amount / 1000).toFixed(0)}K to ${pool.borrowerName}`, "SUCCESS");
   };
 
   const totalInvested = myPledges.reduce((acc, p) => acc + p.amount, 0);
@@ -154,7 +162,7 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
             </div>
           </div>
 
-          <button onClick={handleSavePreferences} className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-2xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Save & Browse Pools</button>
+          <button onClick={handleSavePreferences} className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-2xl shadow-indigo-200 hover:bg-indigo-700 hover:scale-[1.02] active:scale-95 transition-all duration-300">Save & Browse Pools</button>
         </div>
       </div>
     );
@@ -165,13 +173,13 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
       <div className="grid md:grid-cols-4 gap-6">
         {[
           { label: 'Total Invested', value: `₹${(totalInvested / 1000).toFixed(0)}K`, color: 'slate' },
+          { label: 'Total Returned', value: `₹${(totalReturned / 1000).toFixed(0)}K`, color: 'emerald' },
           { label: 'Active Loans', value: activePoolsCount.toString(), color: 'indigo' },
-          { label: 'Diversification', value: '82%', color: 'emerald' },
-          { label: 'Risk Exposure', value: `${riskExposure}%`, color: riskExposure > 30 ? 'rose' : 'emerald' }
+          { label: 'Yield Progress', value: totalInvested > 0 ? `${((totalReturned / totalInvested) * 100).toFixed(0)}%` : '0%', color: 'indigo' }
         ].map(s => (
           <div key={s.label} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{s.label}</p>
-            <p className={`text-2xl font-black ${s.color === 'emerald' ? 'text-emerald-600' : s.color === 'rose' ? 'text-rose-600' : 'text-slate-900'}`}>{s.value}</p>
+            <p className={`text-2xl font-black ${s.color === 'emerald' ? 'text-emerald-600' : 'text-slate-900'}`}>{s.value}</p>
           </div>
         ))}
       </div>
@@ -209,15 +217,18 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
           </div>
         ) : (
           availablePools.map(pool => (
-            <div key={pool.id} className="bg-white rounded-[3rem] border border-slate-100 overflow-hidden shadow-sm hover:border-indigo-600 transition-all flex flex-col group">
-              <div className="p-10 space-y-8 flex-1">
+            <div key={pool.id} className="bg-white rounded-[3rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-2xl hover:border-indigo-500/50 hover:-translate-y-2 transition-all duration-500 flex flex-col group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+              <div className="p-10 space-y-8 flex-1 relative z-10">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <h3 className="text-2xl font-black text-slate-900">{pool.borrowerName}</h3>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{pool.profile.industry} • {pool.loan.purpose}</p>
                   </div>
-                  <div className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${pool.assessment.riskCategory === 'Low' ? 'text-emerald-500 bg-emerald-50 border-emerald-100' : 'text-amber-500 bg-amber-50 border-amber-100'}`}>
-                    {pool.assessment.riskCategory} Risk
+                  <div className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${pool.status === 'REPAID' ? 'text-emerald-500 bg-emerald-50 border-emerald-100' :
+                      pool.assessment.riskCategory === 'Low' ? 'text-indigo-500 bg-indigo-50 border-indigo-100' : 'text-amber-500 bg-amber-50 border-amber-100'
+                    }`}>
+                    {pool.status === 'REPAID' ? '✓ Settled' : `${pool.assessment.riskCategory} Risk`}
                   </div>
                 </div>
 
@@ -236,14 +247,28 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-slate-400">Registry Progress</span>
-                    <span className="text-indigo-600 font-bold">{((pool.totalFunded / pool.loan.amount) * 100).toFixed(0)}%</span>
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                      <span className="text-slate-400">Funding Progress</span>
+                      <span className="text-indigo-600 font-bold">{((pool.totalFunded / pool.loan.amount) * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
+                      <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000 group-hover:bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.3)]" style={{ width: `${(pool.totalFunded / pool.loan.amount) * 100}%` }} />
+                    </div>
                   </div>
-                  <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
-                    <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000 group-hover:bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.3)]" style={{ width: `${(pool.totalFunded / pool.loan.amount) * 100}%` }} />
-                  </div>
+
+                  {pool.totalRepaid > 0 && (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                        <span className="text-emerald-500">Repayment Progress</span>
+                        <span className="text-emerald-600 font-bold">{((pool.totalRepaid / pool.loan.amount) * 100).toFixed(0)}%</span>
+                      </div>
+                      <div className="h-3 w-full bg-emerald-50 rounded-full overflow-hidden p-0.5">
+                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${(pool.totalRepaid / pool.loan.amount) * 100}%` }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -279,7 +304,7 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
                             <button
                               onClick={() => {
                                 const dur = parseInt((document.getElementById(`duration-${pool.id}`) as HTMLInputElement).value);
-                                handlePledge(pool, suggestion.suggestedAmount, dur);
+                                setActivePayment({ amount: suggestion.suggestedAmount, pool, duration: dur });
                               }}
                               className="flex-1 bg-slate-900 text-white py-5 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all"
                             >
@@ -298,8 +323,20 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
                   </div>
                 ) : (
                   <div className="flex gap-4">
-                    <button onClick={() => handleRunAIAllocation(pool)} className="flex-1 py-5 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm">AI Recommendation</button>
-                    <button onClick={() => setAnalyzingPool(pool.id)} className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">Manual Pledge</button>
+                    <button
+                      onClick={() => handleRunAIAllocation(pool)}
+                      disabled={pool.status === 'REPAID' || pool.totalFunded >= pool.loan.amount}
+                      className="flex-1 py-5 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm disabled:opacity-30"
+                    >
+                      AI Recommendation
+                    </button>
+                    <button
+                      onClick={() => setAnalyzingPool(pool.id)}
+                      disabled={pool.status === 'REPAID' || pool.totalFunded >= pool.loan.amount}
+                      className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-30"
+                    >
+                      {pool.status === 'REPAID' ? 'Fully Settled' : pool.totalFunded >= pool.loan.amount ? 'Fully Funded' : 'Manual Pledge'}
+                    </button>
                   </div>
                 )}
               </div>
@@ -307,6 +344,60 @@ const LenderDashboard: React.FC<LenderDashboardProps> = ({ user }) => {
           ))
         )}
       </div>
+
+      {repaymentHistory.length > 0 && (
+        <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8 animate-in slide-in-from-bottom-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Recent Returns</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Real-time repayment ledger</p>
+            </div>
+            <div className="px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+              Direct Deposit
+            </div>
+          </div>
+          <div className="grid gap-4">
+            {repaymentHistory.map(r => (
+              <div key={r.id} className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-emerald-200 transition-all hover:translate-x-1">
+                <div className="flex items-center space-x-6">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-emerald-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-900">₹{(r.amount / 1000).toFixed(0)}K Received</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Pool: {r.poolId.substring(0, 12)}... • {new Date(r.paidAt!).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] font-black text-emerald-500 bg-emerald-100 px-3 py-1 rounded-full uppercase tracking-widest">Verified</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activePayment && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="max-w-md w-full relative animate-in zoom-in-95 slide-in-from-bottom-5">
+            <button
+              onClick={() => setActivePayment(null)}
+              className="absolute -top-12 right-0 text-white/50 hover:text-white flex items-center space-x-2 transition-colors uppercase font-black text-[10px] tracking-widest"
+            >
+              <span>Close</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <PaymentCard
+              amount={activePayment.amount}
+              loanId={activePayment.pool.id}
+              onComplete={() => {
+                handlePledge(activePayment.pool, activePayment.amount, activePayment.duration);
+                setActivePayment(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

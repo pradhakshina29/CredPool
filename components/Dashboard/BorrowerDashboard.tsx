@@ -4,6 +4,7 @@ import { User, BusinessProfile, FinancialSignals, LoanApplication, CreditAssessm
 import { registryService } from '../../services/registryService';
 import { db } from '../../services/firebase';
 import { collection, query, where, onSnapshot, doc, getDocs } from 'firebase/firestore';
+import PaymentCard from '../Payment/PaymentCard';
 
 interface BorrowerDashboardProps {
   user: User;
@@ -15,6 +16,8 @@ const BorrowerDashboard: React.FC<BorrowerDashboardProps> = ({ user }) => {
   const [analyzing, setAnalyzing] = useState(false);
   const [assessment, setAssessment] = useState<CreditAssessment | null>(null);
   const [globalPool, setGlobalPool] = useState<PoolEntry | null>(null);
+  const [showRepayModal, setShowRepayModal] = useState(false);
+
 
   const [profile, setProfile] = useState<BusinessProfile>({
     name: user.name,
@@ -61,7 +64,7 @@ const BorrowerDashboard: React.FC<BorrowerDashboardProps> = ({ user }) => {
             const oldData = globalPool;
             if (oldData && newData.commitments.length > oldData.commitments.length) {
               const newCommitment = newData.commitments[newData.commitments.length - 1];
-              (window as any).trustpool_notify?.("New Pledge!", `${newCommitment.lenderName} committed ₹${(newCommitment.amount / 1000).toFixed(0)}K`, "SUCCESS");
+              (window as any).credpool_notify?.("New Pledge!", `${newCommitment.lenderName} committed ₹${(newCommitment.amount / 1000).toFixed(0)}K`, "SUCCESS");
             }
           }
         });
@@ -119,9 +122,9 @@ const BorrowerDashboard: React.FC<BorrowerDashboardProps> = ({ user }) => {
       setAssessment(resultPool.assessment);
       setGlobalPool(resultPool);
       setView('SUMMARY');
-      (window as any).trustpool_notify?.("Application Success!", "Broadcasted to Real-time Marketplace.", "SUCCESS");
+      (window as any).credpool_notify?.("Application Success!", "Broadcasted to Real-time Marketplace.", "SUCCESS");
     } catch (err: any) {
-      (window as any).trustpool_notify?.("Backend Error", err.message, "WARNING");
+      (window as any).credpool_notify?.("Backend Error", err.message, "WARNING");
     } finally {
       setAnalyzing(false);
     }
@@ -134,9 +137,9 @@ const BorrowerDashboard: React.FC<BorrowerDashboardProps> = ({ user }) => {
         await registryService.deleteBorrowerPool(globalPool.id, user.udyamId);
         setGlobalPool(null);
         setView('ONBOARDING');
-        (window as any).trustpool_notify?.("Request Deleted", "The loan request has been removed from the protocol.", "WARNING");
+        (window as any).credpool_notify?.("Request Deleted", "The loan request has been removed from the protocol.", "WARNING");
       } catch (err: any) {
-        (window as any).trustpool_notify?.("Deletion Failed", err.message, "WARNING");
+        (window as any).credpool_notify?.("Deletion Failed", err.message, "WARNING");
       }
     }
   };
@@ -236,51 +239,81 @@ const BorrowerDashboard: React.FC<BorrowerDashboardProps> = ({ user }) => {
               )}
             </div>
 
-            <div className="space-y-4">
-              <div className="p-6 bg-slate-900 rounded-[2rem] text-white">
-                <p className="text-[9px] font-black uppercase opacity-60 mb-2">Total Outstanding</p>
-                <p className="text-2xl font-black">₹{((globalPool?.loan.amount || 0) - repayments.reduce((acc, r) => acc + r.amount, 0)) / 1000}K</p>
-              </div>
+            {(() => {
+              const currentPoolRepayments = repayments.filter(r => r.poolId === globalPool?.id);
+              const poolTotalRepaid = currentPoolRepayments.reduce((acc, r) => acc + r.amount, 0);
+              const outstanding = (globalPool?.loan.amount || 0) - poolTotalRepaid;
 
-              <button
-                onClick={async () => {
-                  const totalRepaid = repayments.reduce((acc, r) => acc + r.amount, 0);
-                  const remaining = (globalPool?.loan.amount || 0) - totalRepaid;
-                  const payAmount = Math.min(150000, remaining);
-
-                  if (payAmount <= 0) {
-                    (window as any).trustpool_notify?.("Loan Repaid", "Your loan is already fully settled.", "SUCCESS");
-                    return;
-                  }
-
-                  try {
-                    await registryService.submitRepayment(globalPool!.id, user.udyamId, payAmount);
-                    (window as any).trustpool_notify?.("Payment Successful!", `₹${(payAmount / 1000).toFixed(0)}K credited to protocol. Credit score updated.`, "SUCCESS");
-                    if (payAmount === remaining) {
-                      setGlobalPool(null); // Clear for fresh start if fully repaid
-                    }
-                  } catch (e) {
-                    (window as any).trustpool_notify?.("Payment Failed", "Protocol registry rejected transaction.", "WARNING");
-                  }
-                }}
-                disabled={!globalPool || globalPool.totalFunded < globalPool.loan.amount}
-                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 disabled:opacity-30"
-              >
-                Simulate Payment {((globalPool?.loan.amount || 0) - repayments.reduce((acc, r) => acc + r.amount, 0)) > 0 ? `(₹${Math.min(150, ((globalPool?.loan.amount || 0) - repayments.reduce((acc, r) => acc + r.amount, 0)) / 1000).toFixed(0)}K)` : '(Settled)'}
-              </button>
-
-              <div className="space-y-2">
-                <p className="text-[9px] font-black text-slate-400 uppercase ml-1">Payment History</p>
-                {repayments.map(r => (
-                  <div key={r.id} className="flex justify-between text-[10px] font-bold p-2 bg-slate-50 rounded-lg">
-                    <span>{new Date(r.paidAt).toLocaleDateString()}</span>
-                    <span className="text-emerald-600">PAID ₹{(r.amount / 1000).toFixed(0)}K</span>
+              return (
+                <div className="space-y-4">
+                  <div className="p-6 bg-slate-900 rounded-[2rem] text-white">
+                    <p className="text-[9px] font-black uppercase opacity-60 mb-2">Total Outstanding</p>
+                    <p className="text-2xl font-black">₹{(outstanding / 1000).toFixed(0)}K</p>
                   </div>
-                ))}
-              </div>
-            </div>
+
+                  <button
+                    onClick={() => setShowRepayModal(true)}
+                    disabled={!globalPool || globalPool.totalFunded === 0 || outstanding <= 0}
+                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-30"
+                  >
+                    {outstanding <= 0 ? 'Settled' :
+                      globalPool && globalPool.totalFunded === 0 ? 'Waiting for Funding' :
+                        `Repay with PayPal (₹${Math.min(150, outstanding / 1000).toFixed(0)}K)`}
+                  </button>
+
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-slate-400 uppercase ml-1">Payment History</p>
+                    {currentPoolRepayments.length > 0 ? (
+                      currentPoolRepayments.map(r => (
+                        <div key={r.id} className="flex justify-between text-[10px] font-bold p-2 bg-slate-50 rounded-lg">
+                          <span>{new Date(r.paidAt).toLocaleDateString()}</span>
+                          <span className="text-emerald-600">PAID ₹{(r.amount / 1000).toFixed(0)}K</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[9px] text-slate-400 italic ml-1">No payments recorded for this loan.</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
+
+        {/* Repayment Modal */}
+        {showRepayModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in transition-all">
+            <div className="w-full max-w-sm relative">
+              <button
+                onClick={() => setShowRepayModal(false)}
+                className="absolute -top-12 right-0 text-white/50 hover:text-white flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest transition-colors"
+              >
+                <span>Close</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              <PaymentCard
+                amount={Math.min(150000, (globalPool?.loan.amount || 0) - repayments.filter(r => r.poolId === globalPool?.id).reduce((acc, r) => acc + r.amount, 0))}
+                loanId={globalPool!.id}
+                type="REPAYMENT"
+                onComplete={async () => {
+                  setShowRepayModal(false);
+                  const poolRepays = repayments.filter(r => r.poolId === globalPool?.id);
+                  const currentTotal = poolRepays.reduce((acc, r) => acc + r.amount, 0);
+                  const paidInThisTx = Math.min(150000, (globalPool?.loan.amount || 0) - currentTotal);
+
+                  // CRITICAL FIX: Submit the repayment to the registry!
+                  await registryService.submitRepayment(globalPool!.id, user.udyamId, paidInThisTx);
+
+                  const remaining = (globalPool?.loan.amount || 0) - (currentTotal + paidInThisTx);
+                  if (remaining <= 0) {
+                    setGlobalPool(null);
+                  }
+                  (window as any).credpool_notify?.("Payment Successful!", `Protocol updated. Credit score merit increased.`, "SUCCESS");
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-3 gap-8">
           <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
