@@ -1,15 +1,9 @@
-import { initializeApp } from "firebase/app";
-
-console.log("ENV CHECK:", import.meta.env);
-
 const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyBFivtF3SVHacxQklx10cqH9irxE_mhLXk",
+  authDomain: "poolcred-c49ad.firebaseapp.com",
+  projectId: "poolcred-c49ad",
+  storageBucket: "poolcred-c49ad.firebasestorage.app",
+  messagingSenderId: "471100713963",
+  appId: "1:471100713963:web:232856dcc2c239e65707ae",
+  measurementId: "G-GYFG0TGQLH"
 };
-
-export const app = initializeApp(firebaseConfig);
