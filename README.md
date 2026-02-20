@@ -43,3 +43,6 @@ Planned (not in MVP) to add trust and auditability:
 
 ## 🎥 Demo Video
 https://youtu.be/Rsr51WX5uyo?si=B6Z6JDmToz2Gidpq
+
+## VERCEL DEPLOYMENT LINK 
+https://cred-pool-6qrj.vercel.app/
